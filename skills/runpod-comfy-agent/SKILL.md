@@ -7,6 +7,7 @@
 - RunPod APIを直接叩かない。必ずこのリポジトリのCLIを使う。
 - Podを作る前にworkflow API JSONを読む。
 - `bin/start_session.py --workflow-json <workflow.json>` を使い、Loaderノードから必要モデルを推論する。
+- `start_session.py` はComfyUI起動後、workflowで必要なモデルがLoader一覧に出るまで待機する。正常終了後に `run_workflow.py` を実行する。
 - 未登録モデルが出たら、Podを作る前に止めてユーザーに聞く。
 - workflowに書かれているモデルを、勝手に別quantや軽量版へ差し替えない。
 - 元のworkflowファイルを上書きしない。
@@ -20,6 +21,8 @@ python3 bin/run_workflow.py --spec runspecs/<run_spec_json>
 python3 bin/end_session.py --yes
 python3 bin/reap_sessions.py --include-orphans
 ```
+
+`run_workflow.py` がHTTP 400で失敗し、ComfyUIのnode errorに `value_not_in_list` が出る場合は、モデル未配置またはモデル名不一致の可能性が高い。workflowのモデル名を差し替えず、`start_session.py --workflow-json ...` のモデル待機が完了しているかを確認する。
 
 ユーザーが明示的に「terminateするな」と言った場合だけ、Podを残す。その場合は、session id、Pod id、URL、cost/hour、経過時間を報告する。
 

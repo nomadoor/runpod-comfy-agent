@@ -150,6 +150,7 @@ cp config/profiles.example.json config/profiles.json
     "l4": {
       "max_runtime_minutes": 120,
       "max_cost_per_hour": 0.8,
+      "model_ready_timeout_seconds": 3600,
       "pod": {
         "allowedCudaVersions": ["13.0"],
         "gpuTypeIds": ["NVIDIA L4"],
@@ -192,6 +193,9 @@ start_session.py --workflow-json workflows/Z-Image-Turbo.json
   |
   v
  Pod起動後に /opt/ComfyUI/models/... へ curl でダウンロード
+  |
+  v
+ ComfyUIのLoader一覧に必要モデルが出るまで start_session.py が待機
 ```
 
 現在、自動判定に使用する主なLoaderは以下です。
@@ -200,7 +204,10 @@ start_session.py --workflow-json workflows/Z-Image-Turbo.json
 UNETLoader.unet_name
 CLIPLoader.clip_name
 DualCLIPLoader.clip_name1
+DualCLIPLoader.clip_name2
 TripleCLIPLoader.clip_name1
+TripleCLIPLoader.clip_name2
+TripleCLIPLoader.clip_name3
 VAELoader.vae_name
 LoraLoader.lora_name
 CheckpointLoaderSimple.ckpt_name
@@ -208,7 +215,7 @@ CheckpointLoaderSimple.ckpt_name
 
 workflowに記載されたモデルが `MODEL_REGISTRY` に未登録の場合、CLIはPod作成前に停止してモデル名を表示します。その場合は、人間がモデルURLを確認してから `comfy_agent/workflow_requirements.py` に追加します。
 
-モデルダウンロードは、基本的にバックグラウンドで実行されます。ComfyUI自体は先に起動しますが、モデルダウンロードの完了後に該当workflowを実行します。
+モデルダウンロードは、基本的にバックグラウンドで実行されます。ComfyUI自体は先に起動しますが、`start_session.py` はworkflowで必要なモデルがComfyUIのLoader一覧に反映されるまで待機します。
 
 Pod内のモデルダウンロードログ:
 

@@ -29,7 +29,11 @@ def main() -> int:
                 print("cancelled")
                 return 0
         if not args.dry_run:
-            runpod_request("DELETE", f"/pods/{pod_id}")
+            try:
+                runpod_request("DELETE", f"/pods/{pod_id}")
+            except RunPodError as exc:
+                if "HTTP 404" not in str(exc):
+                    raise
         session["status"] = "closed" if not args.dry_run else "close-dry-run"
         session["closed_at"] = utc_now_iso()
         session["updated_at"] = session["closed_at"]

@@ -230,6 +230,7 @@ def copy_session_images(run_dir: Path, downloaded: list[Path]) -> list[Path]:
     try:
         runs_dir = run_dir.parent
         session_dir = runs_dir.parent
+        # Only mirror images for the normal sessions/<session_id>/runs/<run_id> layout.
         if runs_dir.name != "runs" or session_dir.name == "sessions":
             return []
         session_images = session_dir / "images"
@@ -280,6 +281,7 @@ def run(spec_path: Path, comfy_url_arg: str | None, dry_run: bool) -> int:
     else:
         runs_root = DEFAULT_RUNS_ROOT
     if comfy_url_arg and not spec.get("runs_root") and current_session and current_session.get("comfyui_url") != base_url:
+        # An explicit URL may point to a different Pod than the current session.
         runs_root = DEFAULT_RUNS_ROOT
     run_dir = runs_root / run_id
     output_dir = run_dir / "images"

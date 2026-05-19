@@ -9,6 +9,7 @@
 - RunPod APIを直接叩かない。必ず `bin/` のCLIを使う。
 - Pod作成前にworkflow API JSONを読む。
 - `bin/start_session.py --workflow-json <workflow.json>` を使い、必要モデルをLoaderノードから推論する。
+- `start_session.py` の正常終了後に `run_workflow.py` を実行する。workflow由来モデルのComfyUI反映待ちは `start_session.py` が行う。
 - 未登録モデルがある場合は、Pod作成前に止めてユーザーに聞く。
 - workflowに書かれたモデルを勝手に別モデル・別quantへ差し替えない。
 - 元のworkflowファイルを上書きしない。
@@ -30,4 +31,3 @@ python3 bin/reap_sessions.py --include-orphans
 - 人間が見る画像: `sessions/<session_id>/images/`
 - runごとの画像: `sessions/<session_id>/runs/<run_id>/images/`
 - 再現・デバッグ用JSON: `sessions/<session_id>/runs/<run_id>/artifacts/`
-

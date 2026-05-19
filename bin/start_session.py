@@ -8,6 +8,7 @@ import copy
 import json
 import shlex
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -24,9 +25,10 @@ from comfy_agent.runpod import (
     session_dir,
     update_session,
     utc_now_iso,
+    curl_json_url,
     wait_for_http_json,
 )
-from comfy_agent.workflow_requirements import extract_workflow_models
+from comfy_agent.workflow_requirements import extract_workflow_models, iter_workflow_model_refs
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,7 +39,7 @@ def shell_quote(value: str) -> str:
 
 
 def build_bootstrap_script(bootstrap: dict[str, Any], comfy_port: int) -> str:
-    comfy_dir = bootstrap.get("comfyui_dir", "/workspace/ComfyUI")
+    comfy_dir = bootstrap.get("comfyui_dir", "/opt/ComfyUI")
     repo_url = bootstrap.get("comfyui_repo", "https://github.com/comfyanonymous/ComfyUI.git")
     python_bin = bootstrap.get("python", "python3")
     lines = [
@@ -111,6 +113,7 @@ def build_bootstrap_script(bootstrap: dict[str, Any], comfy_port: int) -> str:
         lines.extend(f"  {line}" for line in model_lines)
         lines.extend(
             [
+                "  echo '[comfy-agent] all downloads done'",
                 "}",
                 f"echo '[comfy-agent] starting model downloads in background: {log_path}'",
                 f"download_comfy_models > {shell_quote(str(log_path))} 2>&1 &",
@@ -254,7 +257,7 @@ def apply_workflow_json_requirements(profile: dict[str, Any], workflows: list[di
     profile = copy.deepcopy(profile)
     bootstrap = profile.setdefault("bootstrap", {})
     bootstrap["enabled"] = True
-    comfy_dir = str(bootstrap.get("comfyui_dir", "/workspace/ComfyUI"))
+    comfy_dir = str(bootstrap.get("comfyui_dir", "/opt/ComfyUI"))
     models = [
         model
         for model in bootstrap.get("models", [])
@@ -265,6 +268,75 @@ def apply_workflow_json_requirements(profile: dict[str, Any], workflows: list[di
         inferred_models.extend(extract_workflow_models(workflow, comfy_dir))
     bootstrap["models"] = merge_named_items(models, inferred_models, ("path",))
     return profile
+
+
+def workflow_model_checks(workflows: list[dict[str, Any]]) -> list[dict[str, str]]:
+    checks: list[dict[str, str]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for workflow in workflows:
+        for ref in iter_workflow_model_refs(workflow):
+            marker = (ref["class_type"], ref["input_name"], ref["filename"])
+            if marker in seen:
+                continue
+            checks.append(
+                {
+                    "class_type": ref["class_type"],
+                    "input_name": ref["input_name"],
+                    "filename": ref["filename"],
+                }
+            )
+            seen.add(marker)
+    return checks
+
+
+def object_info_has_value(object_info: dict[str, Any], class_type: str, input_name: str, filename: str) -> bool:
+    node_info = object_info.get(class_type) if isinstance(object_info, dict) else None
+    if not isinstance(node_info, dict):
+        return False
+    input_info = node_info.get("input") or {}
+    if not isinstance(input_info, dict):
+        return False
+    for group_name in ("required", "optional"):
+        group = input_info.get(group_name) or {}
+        if not isinstance(group, dict):
+            continue
+        config = group.get(input_name)
+        if isinstance(config, list) and config and isinstance(config[0], list):
+            return filename in config[0]
+    return False
+
+
+def wait_for_workflow_models(comfyui_url: str, checks: list[dict[str, str]], timeout_seconds: int) -> None:
+    if not checks:
+        return
+    deadline = time.monotonic() + timeout_seconds
+    pending = checks
+    last_error = ""
+    while time.monotonic() < deadline:
+        next_pending: list[dict[str, str]] = []
+        for check in pending:
+            try:
+                object_info = curl_json_url(f"{comfyui_url}/object_info/{check['class_type']}", timeout_seconds=20)
+                if not object_info_has_value(
+                    object_info,
+                    check["class_type"],
+                    check["input_name"],
+                    check["filename"],
+                ):
+                    next_pending.append(check)
+            except Exception as exc:  # noqa: BLE001 - compact readiness retry loop.
+                last_error = str(exc)
+                next_pending.append(check)
+        if not next_pending:
+            return
+        pending = next_pending
+        time.sleep(5)
+
+    details = "\n".join(
+        f"- {item['class_type']}.{item['input_name']}: {item['filename']}" for item in pending
+    )
+    suffix = f"; last error: {last_error}" if last_error else ""
+    raise RunPodError(f"timed out waiting for workflow models to appear in ComfyUI:\n{details}{suffix}")
 
 
 def enforce_profile_guards(profile_name: str, profile: dict[str, Any], *, dry_run: bool) -> None:
@@ -333,8 +405,9 @@ def main() -> int:
         if args.profile not in profiles:
             raise RunPodError(f"unknown profile: {args.profile}")
         profile = profiles[args.profile]
+        workflow_jsons = load_workflow_jsons(args.workflow_json)
         profile = apply_workflow_requirements(profile, load_workflow_requirements(args.workflow_requirements))
-        profile = apply_workflow_json_requirements(profile, load_workflow_jsons(args.workflow_json))
+        profile = apply_workflow_json_requirements(profile, workflow_jsons)
         enforce_profile_guards(args.profile, profile, dry_run=args.dry_run)
 
         session_id = make_session_id(args.session_prefix)
@@ -387,6 +460,11 @@ def main() -> int:
 
         if not args.no_wait:
             wait_for_http_json(f"{comfyui_url}/system_stats", int(profile.get("health_timeout_seconds", 900)))
+            wait_for_workflow_models(
+                comfyui_url,
+                workflow_model_checks(workflow_jsons),
+                int(profile.get("model_ready_timeout_seconds", profile.get("health_timeout_seconds", 900))),
+            )
             session["status"] = "active"
             session["updated_at"] = utc_now_iso()
             update_session(session)

@@ -30,14 +30,14 @@ MODEL_REGISTRY: dict[tuple[str, str], dict[str, str]] = {
 }
 
 
-LOADER_INPUTS: dict[str, tuple[str, str]] = {
-    "UNETLoader": ("diffusion_models", "unet_name"),
-    "CLIPLoader": ("text_encoders", "clip_name"),
-    "DualCLIPLoader": ("text_encoders", "clip_name1"),
-    "TripleCLIPLoader": ("text_encoders", "clip_name1"),
-    "VAELoader": ("vae", "vae_name"),
-    "LoraLoader": ("loras", "lora_name"),
-    "CheckpointLoaderSimple": ("checkpoints", "ckpt_name"),
+LOADER_INPUTS: dict[str, tuple[str, tuple[str, ...]]] = {
+    "UNETLoader": ("diffusion_models", ("unet_name",)),
+    "CLIPLoader": ("text_encoders", ("clip_name",)),
+    "DualCLIPLoader": ("text_encoders", ("clip_name1", "clip_name2")),
+    "TripleCLIPLoader": ("text_encoders", ("clip_name1", "clip_name2", "clip_name3")),
+    "VAELoader": ("vae", ("vae_name",)),
+    "LoraLoader": ("loras", ("lora_name",)),
+    "CheckpointLoaderSimple": ("checkpoints", ("ckpt_name",)),
 }
 
 
@@ -45,11 +45,8 @@ def comfy_model_path(comfy_dir: str, folder: str, filename: str) -> str:
     return str(Path(comfy_dir) / "models" / folder / filename)
 
 
-def extract_workflow_models(workflow: dict[str, Any], comfy_dir: str) -> list[dict[str, str]]:
-    models: list[dict[str, str]] = []
-    seen: set[tuple[str, str]] = set()
-    missing: list[str] = []
-
+def iter_workflow_model_refs(workflow: dict[str, Any]) -> list[dict[str, str]]:
+    refs: list[dict[str, str]] = []
     for node_id, node in workflow.items():
         if not isinstance(node, dict):
             continue
@@ -57,25 +54,48 @@ def extract_workflow_models(workflow: dict[str, Any], comfy_dir: str) -> list[di
         loader = LOADER_INPUTS.get(class_type)
         if not loader:
             continue
-        folder, input_name = loader
+        folder, input_names = loader
         inputs = node.get("inputs") or {}
-        filename = inputs.get(input_name)
-        if not isinstance(filename, str) or not filename:
-            continue
+        for input_name in input_names:
+            filename = inputs.get(input_name)
+            if not isinstance(filename, str) or not filename:
+                continue
+            refs.append(
+                {
+                    "node_id": str(node_id),
+                    "class_type": class_type,
+                    "input_name": input_name,
+                    "folder": folder,
+                    "filename": filename,
+                }
+            )
+    return refs
+
+
+def extract_workflow_models(workflow: dict[str, Any], comfy_dir: str) -> list[dict[str, str]]:
+    models: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    missing: list[str] = []
+
+    for ref in iter_workflow_model_refs(workflow):
+        folder = ref["folder"]
+        filename = ref["filename"]
         key = (folder, filename)
         if key in seen:
             continue
         seen.add(key)
         registry_entry = MODEL_REGISTRY.get(key)
         if not registry_entry:
-            missing.append(f"node {node_id} {class_type}.{input_name}: {folder}/{filename}")
+            missing.append(
+                f"node {ref['node_id']} {ref['class_type']}.{ref['input_name']}: {folder}/{filename}"
+            )
             continue
         models.append(
             {
                 "name": Path(filename).stem,
                 "path": comfy_model_path(comfy_dir, folder, filename),
                 "url": registry_entry["url"],
-                "source": f"workflow node {node_id} {class_type}.{input_name}",
+                "source": f"workflow node {ref['node_id']} {ref['class_type']}.{ref['input_name']}",
             }
         )
 
@@ -83,4 +103,3 @@ def extract_workflow_models(workflow: dict[str, Any], comfy_dir: str) -> list[di
         details = "\n".join(f"- {item}" for item in missing)
         raise RunPodError(f"workflow uses models that are not in MODEL_REGISTRY:\n{details}")
     return models
-

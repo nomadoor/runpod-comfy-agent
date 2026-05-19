@@ -50,9 +50,9 @@ ComfyUI
 
 Pod起動後、workflowから必要モデルを判断して `/opt/ComfyUI/models/...` へダウンロードします。
 
-大きいモデルDL中でもComfyUIを先に開くため、`bootstrap.background_model_downloads` は `true` を基本にします。
+大きいモデルダウンロード中でもComfyUIを先に開くため、`bootstrap.background_model_downloads` は `true` を基本にします。`start_session.py` はComfyUI起動後、workflowで必要なモデルがLoader一覧に反映されるまで待機します。
 
-Pod内のモデルDLログ:
+Pod内のモデルダウンロードログ:
 
 ```text
 /workspace/comfy-agent-model-download.log
@@ -72,6 +72,11 @@ CLIは以下の標準Loaderノードを見て、必要モデルを推論しま�
 
 - `UNETLoader.unet_name`
 - `CLIPLoader.clip_name`
+- `DualCLIPLoader.clip_name1`
+- `DualCLIPLoader.clip_name2`
+- `TripleCLIPLoader.clip_name1`
+- `TripleCLIPLoader.clip_name2`
+- `TripleCLIPLoader.clip_name3`
 - `VAELoader.vae_name`
 
 未登録モデルが見つかった場合、CLIはPod作成前に停止してモデル名を表示します。workflowに書かれているモデル名を正として扱い、人間がURLを確認してから登録します。

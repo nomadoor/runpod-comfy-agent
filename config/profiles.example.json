@@ -5,6 +5,7 @@
       "max_cost_per_hour": 0.8,
       "comfyui_port": 8188,
       "health_timeout_seconds": 3600,
+      "model_ready_timeout_seconds": 3600,
       "pod": {
         "cloudType": "SECURE",
         "computeType": "GPU",
@@ -53,6 +54,7 @@
       "max_cost_per_hour": 2.0,
       "comfyui_port": 8188,
       "health_timeout_seconds": 3600,
+      "model_ready_timeout_seconds": 3600,
       "pod": {
         "cloudType": "SECURE",
         "computeType": "GPU",
@@ -101,6 +103,7 @@
       "max_cost_per_hour": 2.5,
       "comfyui_port": 8188,
       "health_timeout_seconds": 3600,
+      "model_ready_timeout_seconds": 3600,
       "pod": {
         "cloudType": "SECURE",
         "computeType": "GPU",
