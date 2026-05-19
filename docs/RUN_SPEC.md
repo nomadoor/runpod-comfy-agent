@@ -2,7 +2,7 @@
 
 `run_workflow.py` はrun spec JSONを読み、ComfyUI workflow API JSONにパッチを当てて実行します。
 
-元のworkflowテンプレートは上書きしません。実行に使ったworkflowはrunごとの `artifacts/workflow_used.json` に保存します。
+元のworkflowテンプレートはそのまま残し、実行に使ったworkflowはrunごとの `artifacts/workflow_used.json` に保存します。
 
 ## 基本
 
@@ -76,4 +76,3 @@ session配下で実行した場合、画像はセッション全体のギャラ�
 ```text
 sessions/<session_id>/images/
 ```
-

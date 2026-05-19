@@ -309,7 +309,7 @@ def pod_cost_per_hour(pod: dict[str, Any]) -> float | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Start a RunPod ComfyUI session")
-    parser.add_argument("--profile", default="cheap_24gb")
+    parser.add_argument("--profile", default="l4")
     parser.add_argument("--config", default="config/profiles.json")
     parser.add_argument("--session-prefix", default="comfy")
     parser.add_argument(

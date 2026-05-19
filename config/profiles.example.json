@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "cheap_24gb": {
+    "l4": {
       "max_runtime_minutes": 120,
       "max_cost_per_hour": 0.8,
       "comfyui_port": 8188,
@@ -12,14 +12,108 @@
           "13.0"
         ],
         "gpuTypeIds": [
-          "NVIDIA L4",
-          "NVIDIA RTX A5000",
-          "NVIDIA RTX A4000"
+          "NVIDIA L4"
         ],
         "gpuTypePriority": "availability",
         "gpuCount": 1,
         "containerDiskInGb": 80,
         "volumeInGb": 80,
+        "volumeMountPath": "/workspace",
+        "imageName": "YOUR_REGISTRY/runpod-comfy-agent:latest",
+        "ports": [
+          "8188/http"
+        ],
+        "env": {
+          "COMFY_UPDATE_ON_START": "1"
+        }
+      },
+      "bootstrap": {
+        "enabled": true,
+        "background_model_downloads": true,
+        "model_download_log": "/workspace/comfy-agent-model-download.log",
+        "comfyui_dir": "/opt/ComfyUI",
+        "install_comfyui": false,
+        "comfyui_repo": "https://github.com/comfyanonymous/ComfyUI.git",
+        "python": "python3",
+        "custom_nodes": [],
+        "models": [],
+        "extra_commands": [],
+        "start_comfyui": true,
+        "comfyui_args": [
+          "--listen",
+          "0.0.0.0",
+          "--port",
+          "8188",
+          "--enable-cors-header"
+        ]
+      }
+    },
+    "l40s": {
+      "max_runtime_minutes": 120,
+      "max_cost_per_hour": 2.0,
+      "comfyui_port": 8188,
+      "health_timeout_seconds": 3600,
+      "pod": {
+        "cloudType": "SECURE",
+        "computeType": "GPU",
+        "allowedCudaVersions": [
+          "13.0"
+        ],
+        "gpuTypeIds": [
+          "NVIDIA L40S"
+        ],
+        "gpuTypePriority": "availability",
+        "gpuCount": 1,
+        "containerDiskInGb": 120,
+        "volumeInGb": 120,
+        "volumeMountPath": "/workspace",
+        "imageName": "YOUR_REGISTRY/runpod-comfy-agent:latest",
+        "ports": [
+          "8188/http"
+        ],
+        "env": {
+          "COMFY_UPDATE_ON_START": "1"
+        }
+      },
+      "bootstrap": {
+        "enabled": true,
+        "background_model_downloads": true,
+        "model_download_log": "/workspace/comfy-agent-model-download.log",
+        "comfyui_dir": "/opt/ComfyUI",
+        "install_comfyui": false,
+        "comfyui_repo": "https://github.com/comfyanonymous/ComfyUI.git",
+        "python": "python3",
+        "custom_nodes": [],
+        "models": [],
+        "extra_commands": [],
+        "start_comfyui": true,
+        "comfyui_args": [
+          "--listen",
+          "0.0.0.0",
+          "--port",
+          "8188",
+          "--enable-cors-header"
+        ]
+      }
+    },
+    "a100": {
+      "max_runtime_minutes": 120,
+      "max_cost_per_hour": 2.5,
+      "comfyui_port": 8188,
+      "health_timeout_seconds": 3600,
+      "pod": {
+        "cloudType": "SECURE",
+        "computeType": "GPU",
+        "allowedCudaVersions": [
+          "13.0"
+        ],
+        "gpuTypeIds": [
+          "NVIDIA A100 80GB PCIe"
+        ],
+        "gpuTypePriority": "availability",
+        "gpuCount": 1,
+        "containerDiskInGb": 120,
+        "volumeInGb": 120,
         "volumeMountPath": "/workspace",
         "imageName": "YOUR_REGISTRY/runpod-comfy-agent:latest",
         "ports": [

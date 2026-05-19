@@ -15,7 +15,7 @@
 ## 標準フロー
 
 ```bash
-python3 bin/start_session.py --profile cheap_24gb --workflow-json workflows/<workflow_api_json>
+python3 bin/start_session.py --profile l4 --workflow-json workflows/<workflow_api_json>
 python3 bin/run_workflow.py --spec runspecs/<run_spec_json>
 python3 bin/end_session.py --yes
 python3 bin/reap_sessions.py --include-orphans

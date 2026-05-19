@@ -3,7 +3,7 @@
 RunPodのPod操作は、すべてこのリポジトリのCLI越しに行います。
 
 ```bash
-python3 bin/start_session.py --profile cheap_24gb --workflow-json workflows/<workflow_api_json>
+python3 bin/start_session.py --profile l4 --workflow-json workflows/<workflow_api_json>
 python3 bin/run_workflow.py --spec runspecs/<run_spec_json>
 python3 bin/session_status.py --watch 10
 python3 bin/end_session.py --yes
@@ -20,19 +20,19 @@ profileを作ります。
 cp config/profiles.example.json config/profiles.json
 ```
 
-`config/profiles.json` はgit管理しません。実際のimage名、GPU候補、diskサイズなどはここで調整します。
+`config/profiles.json` はローカル運用設定です。実際のimage名、GPU候補、diskサイズなどはここで調整します。
 
-RunPod API keyは `config/profiles.json` には書きません。環境変数か `.env` を使います。
+RunPod API keyは環境変数か `.env` で設定します。
 
 ```bash
 RUNPOD_API_KEY=...
 ```
 
-`.env` もgit管理しません。
+`.env` はローカル専用の認証ファイルとして扱います。
 
 ## Docker image
 
-このリポジトリのDocker imageはComfyUI専用です。JupyterLabは入れません。
+このリポジトリのDocker imageはComfyUI API用です。
 
 ```bash
 docker build -f docker/Dockerfile -t nomadoor/runpod-comfy-agent:latest .
@@ -48,7 +48,7 @@ PyTorch cu130
 ComfyUI
 ```
 
-モデルはimageに焼き込みません。Pod起動後にworkflowから必要モデルを判断してダウンロードします。
+Pod起動後、workflowから必要モデルを判断して `/opt/ComfyUI/models/...` へダウンロードします。
 
 大きいモデルDL中でもComfyUIを先に開くため、`bootstrap.background_model_downloads` は `true` を基本にします。
 
@@ -64,7 +64,7 @@ Pod内のモデルDLログ:
 
 ```bash
 python3 bin/start_session.py \
-  --profile cheap_24gb \
+  --profile l4 \
   --workflow-json workflows/<workflow_api_json>
 ```
 
@@ -74,13 +74,13 @@ CLIは以下の標準Loaderノードを見て、必要モデルを推論しま�
 - `CLIPLoader.clip_name`
 - `VAELoader.vae_name`
 
-未登録モデルが見つかった場合は、Podを作る前に止まります。workflowに書かれていない軽量版や別quantへ勝手に差し替えてはいけません。
+未登録モデルが見つかった場合、CLIはPod作成前に停止してモデル名を表示します。workflowに書かれているモデル名を正として扱い、人間がURLを確認してから登録します。
 
 payloadだけ確認する場合:
 
 ```bash
 python3 bin/start_session.py \
-  --profile cheap_24gb \
+  --profile l4 \
   --workflow-json workflows/<workflow_api_json> \
   --dry-run
 ```
@@ -115,7 +115,7 @@ python3 bin/session_status.py --json
 - 概算コスト
 - RunPod billing APIが返す課金記録
 
-RunPodの現在クレジット残高はCLI未対応です。必要ならRunPodのBilling画面で確認します。
+現在クレジット残高はRunPodのBilling画面で確認します。このCLIはsession / Pod状態、経過時間、概算コスト、billing APIが返す課金記録を表示します。
 
 ## 終了
 
@@ -130,7 +130,6 @@ python3 bin/reap_sessions.py --include-orphans
 
 ## 注意点
 
-- `max_runtime_minutes` はローカルポリシーです。RunPod側の自動停止タイマーではありません。
+- `max_runtime_minutes` はローカルポリシーです。
 - workflowごとにPodを作らず、作業セッションごとに1 Podを使います。
 - 使い終わったら必ずterminateします。ユーザーが明示的に止めるなと言った場合だけ残します。
-

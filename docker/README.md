@@ -6,8 +6,8 @@ RunPodで使うComfyUI専用imageです。
 - PyTorch `cu130`
 - ComfyUI
 - port `8188`
-- JupyterLabなし
-- モデルはimageに焼き込まない
+- ComfyUI API用の最小構成
+- モデルはPod起動時にworkflowから判定して配置
 
 ## build / push
 
@@ -27,4 +27,3 @@ docker build \
 ```
 
 起動時に `entrypoint.sh` が `nvidia-smi` と `torch.cuda.is_available()` を確認します。
-
