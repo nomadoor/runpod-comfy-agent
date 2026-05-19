@@ -15,8 +15,8 @@
 ## 標準フロー
 
 ```bash
-python3 bin/start_session.py --profile cheap_24gb --workflow-json workflows/Z-Image-Turbo.json
-python3 bin/run_workflow.py --spec runspecs/z-image-turbo.example.json
+python3 bin/start_session.py --profile cheap_24gb --workflow-json workflows/<workflow_api_json>
+python3 bin/run_workflow.py --spec runspecs/<run_spec_json>
 python3 bin/end_session.py --yes
 python3 bin/reap_sessions.py --include-orphans
 ```
@@ -37,5 +37,4 @@ python3 bin/reap_sessions.py --include-orphans
 - 生成画像の場所、session id、cost/hour、経過時間、terminate結果を報告する。
 - 失敗した場合は、Podがまだ動いているかを必ず報告する。
 
-詳細ルールは `docs/RUNPOD_COMFYUI_RULES.md` を読む。
-
+詳細なCLI仕様は `README.md` と `docs/RUNPOD_SETUP.md` を読む。

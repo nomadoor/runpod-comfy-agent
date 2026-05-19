@@ -3,8 +3,8 @@
 RunPodのPod操作は、すべてこのリポジトリのCLI越しに行います。
 
 ```bash
-python3 bin/start_session.py --profile cheap_24gb --workflow-json workflows/Z-Image-Turbo.json
-python3 bin/run_workflow.py --spec runspecs/z-image-turbo.example.json
+python3 bin/start_session.py --profile cheap_24gb --workflow-json workflows/<workflow_api_json>
+python3 bin/run_workflow.py --spec runspecs/<run_spec_json>
 python3 bin/session_status.py --watch 10
 python3 bin/end_session.py --yes
 python3 bin/reap_sessions.py --include-orphans
@@ -65,7 +65,7 @@ Pod内のモデルDLログ:
 ```bash
 python3 bin/start_session.py \
   --profile cheap_24gb \
-  --workflow-json workflows/Z-Image-Turbo.json
+  --workflow-json workflows/<workflow_api_json>
 ```
 
 CLIは以下の標準Loaderノードを見て、必要モデルを推論します。
@@ -81,14 +81,14 @@ payloadだけ確認する場合:
 ```bash
 python3 bin/start_session.py \
   --profile cheap_24gb \
-  --workflow-json workflows/Z-Image-Turbo.json \
+  --workflow-json workflows/<workflow_api_json> \
   --dry-run
 ```
 
 ## workflow実行
 
 ```bash
-python3 bin/run_workflow.py --spec runspecs/z-image-turbo.example.json
+python3 bin/run_workflow.py --spec runspecs/<run_spec_json>
 ```
 
 画像はセッション直下にも集約されます。

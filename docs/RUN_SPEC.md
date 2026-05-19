@@ -7,7 +7,7 @@
 ## 基本
 
 ```bash
-python3 bin/run_workflow.py --spec runspecs/z-image-turbo.example.json
+python3 bin/run_workflow.py --spec runspecs/<run_spec_json>
 ```
 
 `sessions/current.json` がある場合、`run_workflow.py` は現在のsessionの `comfyui_url` を使い、結果を `sessions/<session_id>/runs/` に保存します。
@@ -16,7 +16,7 @@ URLを明示することもできます。
 
 ```bash
 python3 bin/run_workflow.py \
-  --spec runspecs/z-image-turbo.example.json \
+  --spec runspecs/<run_spec_json> \
   --comfy-url https://xxxxx-8188.proxy.runpod.net
 ```
 

@@ -13,8 +13,8 @@ RunPod上のComfyUIを、ローカルPC / VSCode / AIエージェントから操
 ## 基本フロー
 
 ```bash
-python3 bin/start_session.py --profile cheap_24gb --workflow-json workflows/Z-Image-Turbo.json
-python3 bin/run_workflow.py --spec runspecs/z-image-turbo.example.json
+python3 bin/start_session.py --profile cheap_24gb --workflow-json workflows/<workflow_api_json>
+python3 bin/run_workflow.py --spec runspecs/<run_spec_json>
 python3 bin/end_session.py --yes
 python3 bin/reap_sessions.py --include-orphans
 ```
@@ -30,10 +30,6 @@ sessions/<session_id>/images/
 ## ドキュメント
 
 - [セットアップ](docs/RUNPOD_SETUP.md)
-- [運用ルール](docs/RUNPOD_COMFYUI_RULES.md)
 - [run spec](docs/RUN_SPEC.md)
-- [検証状況](docs/RUNPOD_STATUS.md)
-- [設計レビュー用メモ](docs/ARCHITECTURE_REVIEW.md)
 
 AIエージェント向けの短い運用ルールは [skills/runpod-comfy-agent/SKILL.md](skills/runpod-comfy-agent/SKILL.md) にあります。
-
