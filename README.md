@@ -44,16 +44,17 @@ ComfyUI workflowを用意すると、そのworkflowに合わせてPodを作成�
  sessions/<session_id>/images/
 ```
 
-基本的な実行手順は以下の通りです。
+## 使い方
 
-```bash
-python3 bin/start_session.py --profile l4 --workflow-json workflows/<workflow_api_json>
-python3 bin/run_workflow.py --spec runspecs/<run_spec_json>
-python3 bin/run_batch.py --jobs jobs.jsonl
-python3 bin/session_status.py --watch 10
-python3 bin/end_session.py --yes
-python3 bin/reap_sessions.py --include-orphans
-```
+このリポジトリは、人間がworkflowと実行方針を決め、AIエージェントがRunPod上のComfyUI実行を進めるための作業台です。
+
+- RunPodのAPI keyを取得し、このPCの環境変数または `.env` に設定します。
+- ComfyUIで作成したworkflow API JSONを `workflows/` に配置します。
+- Claude Code / Codex などのAIエージェントに、使用するworkflow、生成したい内容、枚数、変更したいprompt / seed / parameterを指示します。
+- 必要に応じて、使用するGPU方針もAIエージェントに指示します。標準profileは `l4` / `l40s` / `a100` です。
+- AIエージェントは指示に合わせて `config/profiles.json` を確認し、このリポジトリのCLIを使ってPod作成、モデル判定とダウンロード、workflow実行、画像回収、必要に応じた再実行を行います。
+- 必要に応じて、Podを複数同時に立ち上げ、並列で生成させることもできます。
+- 作業終了時は、AIエージェントがPodをterminateし、削除漏れがないかreaperで確認します。
 
 ## 役割分担
 
