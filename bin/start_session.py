@@ -82,10 +82,11 @@ def build_bootstrap_script(bootstrap: dict[str, Any], comfy_port: int) -> str:
             ]
         )
 
+    model_lines = []
     for model in bootstrap.get("models", []):
         url = model["url"]
         path = model["path"]
-        lines.extend(
+        model_lines.extend(
             [
                 f"mkdir -p \"$(dirname {shell_quote(path)})\"",
                 f"if [ ! -s {shell_quote(path)} ]; then",
@@ -94,6 +95,25 @@ def build_bootstrap_script(bootstrap: dict[str, Any], comfy_port: int) -> str:
                 "fi",
             ]
         )
+    if model_lines and bootstrap.get("background_model_downloads", False):
+        log_path = bootstrap.get("model_download_log", "/workspace/comfy-agent-model-download.log")
+        lines.extend(
+            [
+                f"mkdir -p \"$(dirname {shell_quote(str(log_path))})\"",
+                "download_comfy_models() {",
+                "  set -euo pipefail",
+            ]
+        )
+        lines.extend(f"  {line}" for line in model_lines)
+        lines.extend(
+            [
+                "}",
+                f"echo '[comfy-agent] starting model downloads in background: {log_path}'",
+                f"download_comfy_models > {shell_quote(str(log_path))} 2>&1 &",
+            ]
+        )
+    else:
+        lines.extend(model_lines)
 
     extra_commands = bootstrap.get("extra_commands", [])
     if extra_commands:

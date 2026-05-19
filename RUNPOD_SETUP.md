@@ -90,6 +90,10 @@ docker push YOUR_REGISTRY/runpod-comfy-agent:latest
 That image installs CUDA PyTorch and ComfyUI, then the session bootstrap downloads
 models on each Pod start.
 
+For large model downloads, set `bootstrap.background_model_downloads: true` so
+ComfyUI starts first and model downloads continue in the background. The default
+background log path is `/workspace/comfy-agent-model-download.log`.
+
 The default image is CUDA 13.0 / PyTorch `cu130`. If the chosen RunPod host
 driver does not support that combination, build and use the documented CUDA 12.8
 fallback tag instead.
