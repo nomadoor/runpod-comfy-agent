@@ -236,7 +236,7 @@ python bin/run_workflow.py \
 実行に使ったworkflow JSONは、必ず保存する。
 
 ```text
-sessions/<session_id>/runs/<run_id>/workflow_used.json
+sessions/<session_id>/runs/<run_id>/artifacts/workflow_used.json
 ```
 
 これを最小限のprovenanceとする。
@@ -391,9 +391,15 @@ sessions/
     session.json
     runs/
       <run_id>/
-        input/
-        output/
-        workflow_used.json
+        README.md
+        inputs/
+        images/
+        artifacts/
+          workflow_used.json
+          run_spec_used.json
+          payload.json
+          history.json
+          timing.json
         notes.md
 ```
 
@@ -483,7 +489,7 @@ Podの状態がrunningになっても、ComfyUIがAPIを受け付けられると
 
 AIエージェントが編集したworkflowは別ファイルに保存する。
 
-実行に使ったworkflowは `workflow_used.json` として保存する。
+実行に使ったworkflowは `artifacts/workflow_used.json` として保存する。
 
 ### 4. 課金事故対策
 

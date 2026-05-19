@@ -95,7 +95,7 @@ AIエージェントは、既存ノードの入力値を編集したworkflow API
 実行に使ったworkflow JSONは、必ず以下に保存してください。
 
 ```text
-sessions/<session_id>/runs/<run_id>/workflow_used.json
+sessions/<session_id>/runs/<run_id>/artifacts/workflow_used.json
 ```
 
 ---
