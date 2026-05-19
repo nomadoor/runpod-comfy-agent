@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+
+.gitdir/
+
+config/profiles.json
+sessions/
+runspecs/
+workflows/
+
+.env
+.env.*
+
+*.log

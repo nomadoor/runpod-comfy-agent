@@ -1,0 +1,84 @@
+{
+  "profiles": {
+    "cheap_24gb": {
+      "max_runtime_minutes": 120,
+      "max_cost_per_hour": 0.8,
+      "comfyui_port": 8188,
+      "health_timeout_seconds": 3600,
+      "pod": {
+        "cloudType": "SECURE",
+        "computeType": "GPU",
+        "allowedCudaVersions": [
+          "13.0"
+        ],
+        "gpuTypeIds": [
+          "NVIDIA L4",
+          "NVIDIA RTX A5000",
+          "NVIDIA RTX A4000"
+        ],
+        "gpuTypePriority": "availability",
+        "gpuCount": 1,
+        "containerDiskInGb": 80,
+        "volumeInGb": 80,
+        "volumeMountPath": "/workspace",
+        "imageName": "YOUR_REGISTRY/runpod-comfy-agent:latest",
+        "ports": [
+          "8188/http",
+          "8888/http"
+        ],
+        "env": {
+          "COMFY_UPDATE_ON_START": "1"
+        }
+      },
+      "bootstrap": {
+        "enabled": true,
+        "comfyui_dir": "/opt/ComfyUI",
+        "install_comfyui": false,
+        "comfyui_repo": "https://github.com/comfyanonymous/ComfyUI.git",
+        "python": "python3",
+        "custom_nodes": [],
+        "models": [
+          {
+            "name": "z_image_turbo_bf16",
+            "path": "/opt/ComfyUI/models/diffusion_models/z_image_turbo_bf16.safetensors",
+            "url": "PUT_DIRECT_DOWNLOAD_URL_HERE"
+          },
+          {
+            "name": "qwen_3_4b",
+            "path": "/opt/ComfyUI/models/text_encoders/qwen_3_4b.safetensors",
+            "url": "PUT_DIRECT_DOWNLOAD_URL_HERE"
+          },
+          {
+            "name": "ae",
+            "path": "/opt/ComfyUI/models/vae/ae.safetensors",
+            "url": "PUT_DIRECT_DOWNLOAD_URL_HERE"
+          },
+          {
+            "name": "flux_2_klein_9b_fp8",
+            "path": "/opt/ComfyUI/models/diffusion_models/flux-2-klein-9b-fp8.safetensors",
+            "url": "PUT_DIRECT_DOWNLOAD_URL_HERE"
+          },
+          {
+            "name": "qwen_3_8b",
+            "path": "/opt/ComfyUI/models/text_encoders/qwen_3_8b.safetensors",
+            "url": "PUT_DIRECT_DOWNLOAD_URL_HERE"
+          },
+          {
+            "name": "flux2_vae",
+            "path": "/opt/ComfyUI/models/vae/flux2-vae.safetensors",
+            "url": "PUT_DIRECT_DOWNLOAD_URL_HERE"
+          }
+        ],
+        "extra_commands": [],
+        "start_comfyui": true,
+        "comfyui_args": [
+          "--listen",
+          "0.0.0.0",
+          "--port",
+          "8188",
+          "--enable-cors-header"
+        ]
+      }
+    }
+  }
+}
