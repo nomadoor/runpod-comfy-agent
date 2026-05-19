@@ -22,12 +22,12 @@
 RunPod / ComfyUI の詳しい運用ルールは、以下の文書に従ってください。
 
 ```text
-RUNPOD_COMFYUI_RULES.md
+docs/RUNPOD_COMFYUI_RULES.md
 ```
 
 この `AGENTS.md` は、このテストプロジェクトでAIエージェントが迷わないための短縮ルールです。
 
-詳細な判断に迷った場合は、必ず `RUNPOD_COMFYUI_RULES.md` を優先してください。
+詳細な判断に迷った場合は、必ず `docs/RUNPOD_COMFYUI_RULES.md` を優先してください。
 
 ---
 
@@ -40,10 +40,10 @@ Podの作成・終了・掃除は、必ずこのプロジェクト内のCLIを�
 使ってよい予定のCLIは以下です。
 
 ```bash
-python bin/start_session.py --profile cheap_24gb
-python bin/run_workflow.py --workflow <workflow_name> --workflow-json <edited_workflow_json> --input <input_path>
-python bin/end_session.py
-python bin/reap_sessions.py
+python bin/start_session.py --profile cheap_24gb --workflow-json workflows/<workflow_api_json>
+python bin/run_workflow.py --spec runspecs/<run_spec_json>
+python bin/end_session.py --yes
+python bin/reap_sessions.py --include-orphans
 ```
 
 まだCLIが存在しない場合は、このルールに従って実装してください。
@@ -127,7 +127,7 @@ AIエージェントは以下を行ってはいけません。
 * 高額GPUを勝手に使う
 * 元の `workflow_api.json` を直接上書きする
 * 未登録のworkflowを勝手に登録する
-* `RUNPOD_COMFYUI_RULES.md` の内容と矛盾する実装をする
+* `docs/RUNPOD_COMFYUI_RULES.md` の内容と矛盾する実装をする
 
 ---
 
@@ -136,10 +136,10 @@ AIエージェントは以下を行ってはいけません。
 このテストプロジェクトでは、まず以下の4つだけを作ります。
 
 ```text
-start_session.py
-run_workflow.py
-end_session.py
-reap_sessions.py
+bin/start_session.py
+bin/run_workflow.py
+bin/end_session.py
+bin/reap_sessions.py
 ```
 
 それ以外は、必要になるまで作りません。
@@ -197,7 +197,7 @@ end_session.py でPodをterminateする
 
 迷った場合は、以下の優先順位で判断してください。
 
-1. `RUNPOD_COMFYUI_RULES.md` に従う
+1. `docs/RUNPOD_COMFYUI_RULES.md` に従う
 2. Pod課金事故を防ぐ
 3. 元のworkflowテンプレートを壊さない
 4. 実行に使ったworkflow JSONを保存する

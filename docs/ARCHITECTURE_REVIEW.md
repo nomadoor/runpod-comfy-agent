@@ -116,7 +116,7 @@ bootstrap for that session only.
 
 ## File Responsibilities
 
-### `RUNPOD_COMFYUI_RULES.md`
+### `docs/RUNPOD_COMFYUI_RULES.md`
 
 Project rules and operating principles. This is the source of truth for safety
 and scope decisions.
@@ -132,7 +132,7 @@ Important rules:
 ### `AGENTS.md`
 
 Short operational instructions for AI agents in this repo. It mirrors the core
-rules from `RUNPOD_COMFYUI_RULES.md`.
+rules from `docs/RUNPOD_COMFYUI_RULES.md`.
 
 ### `config/profiles.example.json`
 
@@ -325,12 +325,12 @@ python bin/reap_sessions.py --include-orphans
 python bin/reap_sessions.py --include-orphans --yes
 ```
 
-### `RUNPOD_SETUP.md`
+### `docs/RUNPOD_SETUP.md`
 
 Operational guide for configuring profiles, starting a session, ending a
 session, and reaping leaked Pods.
 
-### `RUN_SPEC.md`
+### `docs/RUN_SPEC.md`
 
 Documents run spec format for `run_workflow.py`.
 
