@@ -21,6 +21,7 @@
 ```bash
 python3 bin/start_session.py --profile l4 --workflow-json workflows/<workflow_api_json>
 python3 bin/run_workflow.py --spec runspecs/<run_spec_json>
+python3 bin/run_batch.py --jobs jobs.jsonl
 python3 bin/session_status.py
 python3 bin/end_session.py --yes
 python3 bin/reap_sessions.py --include-orphans
@@ -31,3 +32,4 @@ python3 bin/reap_sessions.py --include-orphans
 - 人間が見る画像: `sessions/<session_id>/images/`
 - runごとの画像: `sessions/<session_id>/runs/<run_id>/images/`
 - 再現・デバッグ用JSON: `sessions/<session_id>/runs/<run_id>/artifacts/`
+- batch結果: `sessions/<session_id>/batches/<batch_id>/manifest.jsonl`

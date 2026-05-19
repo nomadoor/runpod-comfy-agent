@@ -49,6 +49,7 @@ ComfyUI workflowを用意すると、そのworkflowに合わせてPodを作成�
 ```bash
 python3 bin/start_session.py --profile l4 --workflow-json workflows/<workflow_api_json>
 python3 bin/run_workflow.py --spec runspecs/<run_spec_json>
+python3 bin/run_batch.py --jobs jobs.jsonl
 python3 bin/session_status.py --watch 10
 python3 bin/end_session.py --yes
 python3 bin/reap_sessions.py --include-orphans
@@ -248,6 +249,18 @@ sessions/<session_id>/runs/<run_id>/
 
 `workflow_used.json` は実行に使ったworkflowです。元の `workflows/...` はテンプレートとして残します。
 
+## Batch
+
+複数のrun specを順番に実行する場合は、`jobs.jsonl` と `run_batch.py` を使います。
+
+```bash
+python3 bin/run_batch.py --jobs jobs.jsonl
+```
+
+`run_batch.py` は現在のsession上のComfyUIへjobを順番に投入し、`manifest.jsonl` に `running` / `done` / `failed` を記録します。同じbatch directoryで再実行すると、最新statusが `done` のjobはskipされます。
+
+最初のbatch実装は1 Podでの逐次実行です。複数Podへの分散は、manifest/resumeの運用が安定してから追加します。
+
 ## 状態確認と終了
 
 状態確認:
@@ -271,3 +284,4 @@ python3 bin/reap_sessions.py --include-orphans
 
 - [セットアップ](docs/RUNPOD_SETUP.md)
 - [run spec](docs/RUN_SPEC.md)
+- [batch](docs/BATCH.md)

@@ -7,6 +7,8 @@ config/profiles.json
 sessions/
 runspecs/
 workflows/
+batches/
+jobs*.jsonl
 
 .env
 .env.*
