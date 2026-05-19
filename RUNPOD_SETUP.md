@@ -117,6 +117,21 @@ Multiple `--workflow-requirements` flags can be passed. They are merged into the
 profile's `bootstrap.custom_nodes`, `bootstrap.models`, and
 `bootstrap.extra_commands` for that session only.
 
+For workflow API JSON files that use standard loader nodes, prefer passing the
+workflow itself. The CLI inspects loader inputs such as `UNETLoader.unet_name`,
+`CLIPLoader.clip_name`, and `VAELoader.vae_name`, then adds known model URLs
+before the Pod is created:
+
+```bash
+python bin/start_session.py \
+  --profile cheap_24gb \
+  --workflow-json workflows/Z-Image-Turbo.json
+```
+
+If a model name is not registered, the CLI stops before creating a Pod. Do not
+swap model files just because a smaller quantized variant exists; update the
+workflow JSON intentionally or ask first.
+
 `start_session.py` will:
 
 - create one RunPod Pod for the session

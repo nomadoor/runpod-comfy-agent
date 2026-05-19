@@ -26,6 +26,7 @@ from comfy_agent.runpod import (
     utc_now_iso,
     wait_for_http_json,
 )
+from comfy_agent.workflow_requirements import extract_workflow_models
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -86,16 +87,19 @@ def build_bootstrap_script(bootstrap: dict[str, Any], comfy_port: int) -> str:
     for model in bootstrap.get("models", []):
         url = model["url"]
         path = model["path"]
+        partial_path = f"{path}.part"
         model_lines.extend(
             [
                 f"mkdir -p \"$(dirname {shell_quote(path)})\"",
                 f"if [ ! -s {shell_quote(path)} ]; then",
                 f"  echo '[comfy-agent] downloading {Path(path).name}'",
-                f"  curl -L --fail --retry 5 --retry-delay 5 -o {shell_quote(path)} {shell_quote(url)}",
+                f"  rm -f {shell_quote(partial_path)}",
+                f"  curl -L --fail --retry 5 --retry-delay 5 -o {shell_quote(partial_path)} {shell_quote(url)}",
+                f"  mv {shell_quote(partial_path)} {shell_quote(path)}",
                 "fi",
             ]
         )
-    if model_lines and bootstrap.get("background_model_downloads", False):
+    if model_lines and bootstrap.get("background_model_downloads", True):
         log_path = bootstrap.get("model_download_log", "/workspace/comfy-agent-model-download.log")
         lines.extend(
             [
@@ -196,6 +200,18 @@ def load_workflow_requirements(values: list[str]) -> list[dict[str, Any]]:
     return requirements
 
 
+def load_workflow_jsons(values: list[str]) -> list[dict[str, Any]]:
+    workflows: list[dict[str, Any]] = []
+    for value in values:
+        path = Path(value)
+        if not path.is_absolute():
+            path = (ROOT / path).resolve()
+        if not path.exists():
+            raise RunPodError(f"workflow JSON file not found: {path}")
+        workflows.append(load_json_file(path))
+    return workflows
+
+
 def merge_named_items(base: list[dict[str, Any]], extra: list[dict[str, Any]], key_fields: tuple[str, ...]) -> list[dict[str, Any]]:
     merged = [copy.deepcopy(item) for item in base]
     seen: set[tuple[str, ...]] = set()
@@ -229,6 +245,25 @@ def apply_workflow_requirements(profile: dict[str, Any], requirements: list[dict
     bootstrap["custom_nodes"] = custom_nodes
     bootstrap["models"] = models
     bootstrap["extra_commands"] = extra_commands
+    return profile
+
+
+def apply_workflow_json_requirements(profile: dict[str, Any], workflows: list[dict[str, Any]]) -> dict[str, Any]:
+    if not workflows:
+        return profile
+    profile = copy.deepcopy(profile)
+    bootstrap = profile.setdefault("bootstrap", {})
+    bootstrap["enabled"] = True
+    comfy_dir = str(bootstrap.get("comfyui_dir", "/workspace/ComfyUI"))
+    models = [
+        model
+        for model in bootstrap.get("models", [])
+        if model.get("url") and model.get("url") != "PUT_DIRECT_DOWNLOAD_URL_HERE"
+    ]
+    inferred_models: list[dict[str, Any]] = []
+    for workflow in workflows:
+        inferred_models.extend(extract_workflow_models(workflow, comfy_dir))
+    bootstrap["models"] = merge_named_items(models, inferred_models, ("path",))
     return profile
 
 
@@ -283,6 +318,12 @@ def main() -> int:
         default=[],
         help="Path to a workflow requirements JSON file; may be passed multiple times",
     )
+    parser.add_argument(
+        "--workflow-json",
+        action="append",
+        default=[],
+        help="Path to a workflow API JSON file; loader nodes are inspected and known model URLs are added",
+    )
     parser.add_argument("--no-wait", action="store_true", help="Create the Pod but do not wait for ComfyUI")
     parser.add_argument("--dry-run", action="store_true", help="Print the RunPod create payload without calling RunPod")
     args = parser.parse_args()
@@ -293,6 +334,7 @@ def main() -> int:
             raise RunPodError(f"unknown profile: {args.profile}")
         profile = profiles[args.profile]
         profile = apply_workflow_requirements(profile, load_workflow_requirements(args.workflow_requirements))
+        profile = apply_workflow_json_requirements(profile, load_workflow_jsons(args.workflow_json))
         enforce_profile_guards(args.profile, profile, dry_run=args.dry_run)
 
         session_id = make_session_id(args.session_prefix)

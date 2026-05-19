@@ -32,6 +32,8 @@
       },
       "bootstrap": {
         "enabled": true,
+        "background_model_downloads": true,
+        "model_download_log": "/workspace/comfy-agent-model-download.log",
         "comfyui_dir": "/opt/ComfyUI",
         "install_comfyui": false,
         "comfyui_repo": "https://github.com/comfyanonymous/ComfyUI.git",
