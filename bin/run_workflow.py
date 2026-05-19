@@ -259,6 +259,8 @@ def run(spec_path: Path, comfy_url_arg: str | None, dry_run: bool) -> int:
         runs_root = ROOT / "sessions" / current_session["session_id"] / "runs"
     else:
         runs_root = DEFAULT_RUNS_ROOT
+    if comfy_url_arg and not spec.get("runs_root") and current_session and current_session.get("comfyui_url") != base_url:
+        runs_root = DEFAULT_RUNS_ROOT
     run_dir = runs_root / run_id
     output_dir = run_dir / "images"
     input_dir = run_dir / "inputs"
