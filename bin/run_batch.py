@@ -31,11 +31,8 @@ def utc_now_iso() -> str:
 def resolve_path(value: str, base_dir: Path) -> Path:
     path = Path(value)
     if path.is_absolute():
-        return path
-    candidate = (base_dir / path).resolve()
-    if candidate.exists():
-        return candidate
-    return (ROOT / path).resolve()
+        return path.resolve()
+    return (base_dir / path).resolve()
 
 
 def safe_id(value: str) -> str:
@@ -47,7 +44,11 @@ def safe_id(value: str) -> str:
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    with path.open("r", encoding="utf-8") as f:
+    try:
+        f = path.open("r", encoding="utf-8")
+    except OSError as exc:
+        raise BatchError(f"could not read jobs file {path}: {exc}") from exc
+    with f:
         for line_no, raw_line in enumerate(f, start=1):
             line = raw_line.strip()
             if not line or line.startswith("#"):
@@ -134,6 +135,20 @@ def read_timing(run_dir: Path) -> dict[str, Any]:
     return timing if isinstance(timing, dict) else {}
 
 
+def safe_output_paths(run_dir: Path) -> tuple[list[str], str | None]:
+    try:
+        return output_paths(run_dir), None
+    except OSError as exc:
+        return [], str(exc)
+
+
+def safe_read_timing(run_dir: Path) -> dict[str, Any]:
+    try:
+        return read_timing(run_dir)
+    except Exception as exc:  # noqa: BLE001 - manifest should survive malformed timing files.
+        return {"error": f"timing_read_failed: {exc}"}
+
+
 def run_batch(jobs_path: Path, batch_dir_arg: str | None, comfy_url: str | None, dry_run: bool, rerun_done: bool) -> int:
     started = time.monotonic()
     jobs_path = jobs_path.resolve()
@@ -161,8 +176,31 @@ def run_batch(jobs_path: Path, batch_dir_arg: str | None, comfy_url: str | None,
     )
 
     summary = {"done": 0, "failed": 0, "skipped": 0, "planned": 0}
+    seen_job_ids: set[str] = set()
+    seen_run_ids: set[str] = set()
     for index, raw_job in enumerate(jobs, start=1):
         job_id, spec = normalize_job(raw_job, index)
+        run_id = str(spec["run_id"])
+        if job_id in seen_job_ids:
+            summary["failed"] += 1
+            message = f"duplicate job_id in jobs file: {job_id}"
+            append_manifest(
+                manifest_path,
+                {"job_id": job_id, "status": "failed", "finished_at": utc_now_iso(), "error": message},
+            )
+            print(f"failed: {message}", file=sys.stderr)
+            continue
+        if run_id in seen_run_ids:
+            summary["failed"] += 1
+            message = f"duplicate run_id in jobs file: {run_id}"
+            append_manifest(
+                manifest_path,
+                {"job_id": job_id, "status": "failed", "finished_at": utc_now_iso(), "run_id": run_id, "error": message},
+            )
+            print(f"failed: {message}", file=sys.stderr)
+            continue
+        seen_job_ids.add(job_id)
+        seen_run_ids.add(run_id)
         previous = latest.get(job_id)
         if previous and previous.get("status") == "done" and not rerun_done:
             summary["skipped"] += 1
@@ -225,7 +263,7 @@ def run_batch(jobs_path: Path, batch_dir_arg: str | None, comfy_url: str | None,
             print(f"failed: {job_id}: {exc}", file=sys.stderr)
             continue
 
-        timing = read_timing(run_dir)
+        output, output_error = safe_output_paths(run_dir)
         item = {
             "job_id": job_id,
             "status": "done",
@@ -233,9 +271,11 @@ def run_batch(jobs_path: Path, batch_dir_arg: str | None, comfy_url: str | None,
             "run_id": spec["run_id"],
             "run_dir": str(run_dir),
             "spec_path": str(spec_path),
-            "output": output_paths(run_dir),
-            "timing": timing,
+            "output": output,
+            "timing": safe_read_timing(run_dir),
         }
+        if output_error:
+            item["output_error"] = output_error
         append_manifest(manifest_path, item)
         latest[job_id] = item
         summary["done"] += 1
