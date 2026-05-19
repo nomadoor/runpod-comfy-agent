@@ -66,10 +66,16 @@ The original workflow template is never overwritten. Each run writes:
 
 ```text
 sessions/manual-runs/<run_id>/
-  run_spec_used.json
-  workflow_used.json
-  payload.json
-  history.json
-  input/
-  output/
+  README.md
+  images/
+  inputs/
+  artifacts/
+    run_spec_used.json
+    workflow_used.json
+    payload.json
+    history.json
+    timing.json
 ```
+
+`images/` is the human-facing output folder. `artifacts/` is for exact replay,
+debugging, ComfyUI history, and timing logs.

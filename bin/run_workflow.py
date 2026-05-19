@@ -15,7 +15,7 @@ import shutil
 import subprocess
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
@@ -41,6 +41,10 @@ def write_json(path: Path, data: Any) -> None:
     with path.open("w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
         f.write("\n")
+
+
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 def resolve_path(value: str, base_dir: Path) -> Path:
@@ -174,19 +178,24 @@ def submit_prompt(base_url: str, payload_path: Path) -> str:
     return str(prompt_id)
 
 
-def poll_history(base_url: str, prompt_id: str, timeout_seconds: int, interval_seconds: float) -> dict[str, Any]:
+def poll_history(
+    base_url: str, prompt_id: str, timeout_seconds: int, interval_seconds: float
+) -> tuple[dict[str, Any], dict[str, Any]]:
     deadline = time.monotonic() + timeout_seconds
     last: Any = None
+    polls = 0
+    start = time.monotonic()
     while time.monotonic() < deadline:
+        polls += 1
         history = curl_json([f"{base_url}/history/{prompt_id}"], timeout=60)
         last = history
         entry = history.get(prompt_id) if isinstance(history, dict) else None
         if entry:
             status = entry.get("status", {})
             if status.get("completed"):
-                return entry
+                return entry, {"polls": polls, "poll_seconds": round(time.monotonic() - start, 3)}
             if status.get("status_str") == "error":
-                return entry
+                return entry, {"polls": polls, "poll_seconds": round(time.monotonic() - start, 3)}
         time.sleep(interval_seconds)
     raise WorkflowError(f"Timed out waiting for prompt {prompt_id}; last history: {last}")
 
@@ -218,6 +227,11 @@ def download_images(base_url: str, images: list[dict[str, str]], output_dir: Pat
 
 
 def run(spec_path: Path, comfy_url_arg: str | None, dry_run: bool) -> int:
+    total_started = time.monotonic()
+    timing: dict[str, Any] = {
+        "started_at": utc_now_iso(),
+        "steps": {},
+    }
     spec = load_json(spec_path)
     spec_dir = spec_path.parent
     current_session = None
@@ -246,11 +260,14 @@ def run(spec_path: Path, comfy_url_arg: str | None, dry_run: bool) -> int:
     else:
         runs_root = DEFAULT_RUNS_ROOT
     run_dir = runs_root / run_id
-    output_dir = run_dir / "output"
-    input_dir = run_dir / "input"
+    output_dir = run_dir / "images"
+    input_dir = run_dir / "inputs"
+    artifacts_dir = run_dir / "artifacts"
     run_dir.mkdir(parents=True, exist_ok=True)
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
 
     uploaded: list[tuple[dict[str, Any], str]] = []
+    upload_started = time.monotonic()
     if not dry_run:
         for image in spec.get("inputs", {}).get("images", []):
             uploaded_name = upload_image(base_url, image, spec_dir)
@@ -261,39 +278,65 @@ def run(spec_path: Path, comfy_url_arg: str | None, dry_run: bool) -> int:
     else:
         for image in spec.get("inputs", {}).get("images", []):
             uploaded.append((image, str(image.get("remote_name") or Path(image["local_path"]).name)))
+    timing["steps"]["upload_inputs_seconds"] = round(time.monotonic() - upload_started, 3)
 
     apply_image_inputs(workflow, uploaded)
     for patch in spec.get("patches", []):
         apply_patch_entry(workflow, patch)
 
     payload = {"prompt": workflow}
-    write_json(run_dir / "workflow_used.json", workflow)
-    write_json(run_dir / "payload.json", payload)
-    write_json(run_dir / "run_spec_used.json", spec)
+    write_json(artifacts_dir / "workflow_used.json", workflow)
+    write_json(artifacts_dir / "payload.json", payload)
+    write_json(artifacts_dir / "run_spec_used.json", spec)
 
     if dry_run:
-        print(f"dry-run: wrote {run_dir / 'workflow_used.json'}")
+        print(f"dry-run: wrote {artifacts_dir / 'workflow_used.json'}")
         return 0
 
-    prompt_id = submit_prompt(base_url, run_dir / "payload.json")
+    submit_started = time.monotonic()
+    prompt_id = submit_prompt(base_url, artifacts_dir / "payload.json")
+    timing["steps"]["submit_seconds"] = round(time.monotonic() - submit_started, 3)
+    timing["prompt_id"] = prompt_id
     print(f"prompt_id: {prompt_id}")
-    history_entry = poll_history(
+    history_entry, poll_timing = poll_history(
         base_url,
         prompt_id,
         int(spec.get("timeout_seconds", 900)),
         float(spec.get("poll_interval_seconds", 2.0)),
     )
-    write_json(run_dir / "history.json", {prompt_id: history_entry})
+    timing["steps"].update(poll_timing)
+    write_json(artifacts_dir / "history.json", {prompt_id: history_entry})
 
     status = history_entry.get("status", {})
     if status.get("status_str") == "error":
-        raise WorkflowError(f"ComfyUI execution failed; see {run_dir / 'history.json'}")
+        raise WorkflowError(f"ComfyUI execution failed; see {artifacts_dir / 'history.json'}")
 
     images = collect_images(history_entry)
+    download_started = time.monotonic()
     downloaded = download_images(base_url, images, output_dir)
+    timing["steps"]["download_outputs_seconds"] = round(time.monotonic() - download_started, 3)
+    timing["finished_at"] = utc_now_iso()
+    timing["total_seconds"] = round(time.monotonic() - total_started, 3)
+    timing["status"] = status.get("status_str", "unknown")
+    timing["outputs"] = [str(path.relative_to(run_dir)) for path in downloaded]
+    write_json(artifacts_dir / "timing.json", timing)
+    if downloaded:
+        preview_lines = "\n".join(f"- [{path.name}](images/{path.name})" for path in downloaded)
+    else:
+        preview_lines = "- No images downloaded"
+    (run_dir / "README.md").write_text(
+        f"# {run_id}\n\n"
+        f"status: `{timing['status']}`  \n"
+        f"total: `{timing['total_seconds']}s`  \n"
+        f"prompt_id: `{prompt_id}`\n\n"
+        f"## Images\n\n{preview_lines}\n\n"
+        f"## Details\n\nMachine-readable files are in `artifacts/`.\n",
+        encoding="utf-8",
+    )
     print(f"status: {status.get('status_str', 'unknown')}")
     for path in downloaded:
         print(f"output: {path}")
+    print(f"timing: {artifacts_dir / 'timing.json'}")
     return 0
 
 
