@@ -226,6 +226,26 @@ def download_images(base_url: str, images: list[dict[str, str]], output_dir: Pat
     return downloaded
 
 
+def copy_session_images(run_dir: Path, downloaded: list[Path]) -> list[Path]:
+    try:
+        runs_dir = run_dir.parent
+        session_dir = runs_dir.parent
+        if runs_dir.name != "runs" or session_dir.name == "sessions":
+            return []
+        session_images = session_dir / "images"
+        session_images.mkdir(parents=True, exist_ok=True)
+        copied: list[Path] = []
+        for path in downloaded:
+            target = session_images / path.name
+            if target.exists():
+                target = session_images / f"{run_dir.name}--{path.name}"
+            shutil.copy2(path, target)
+            copied.append(target)
+        return copied
+    except OSError:
+        return []
+
+
 def run(spec_path: Path, comfy_url_arg: str | None, dry_run: bool) -> int:
     total_started = time.monotonic()
     timing: dict[str, Any] = {
@@ -316,11 +336,14 @@ def run(spec_path: Path, comfy_url_arg: str | None, dry_run: bool) -> int:
     images = collect_images(history_entry)
     download_started = time.monotonic()
     downloaded = download_images(base_url, images, output_dir)
+    session_copies = copy_session_images(run_dir, downloaded)
     timing["steps"]["download_outputs_seconds"] = round(time.monotonic() - download_started, 3)
     timing["finished_at"] = utc_now_iso()
     timing["total_seconds"] = round(time.monotonic() - total_started, 3)
     timing["status"] = status.get("status_str", "unknown")
     timing["outputs"] = [str(path.relative_to(run_dir)) for path in downloaded]
+    if session_copies:
+        timing["session_images"] = [str(path) for path in session_copies]
     write_json(artifacts_dir / "timing.json", timing)
     if downloaded:
         preview_lines = "\n".join(f"- [{path.name}](images/{path.name})" for path in downloaded)

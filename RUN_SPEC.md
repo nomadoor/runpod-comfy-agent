@@ -79,3 +79,11 @@ sessions/manual-runs/<run_id>/
 
 `images/` is the human-facing output folder. `artifacts/` is for exact replay,
 debugging, ComfyUI history, and timing logs.
+
+When a run is saved under a session, downloaded images are also copied to:
+
+```text
+sessions/<session_id>/images/
+```
+
+That folder is the human-facing gallery for the whole session.
