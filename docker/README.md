@@ -4,12 +4,15 @@ This folder defines the reusable RunPod image for the project.
 
 The image:
 
-- starts from an NVIDIA CUDA 13.0 devel base by default
+- starts from an NVIDIA CUDA 13.0 cuDNN runtime base by default
 - installs Python, Git, Curl, and CUDA PyTorch wheels
 - clones the latest ComfyUI source at build time
 - installs ComfyUI requirements
 - exposes port `8188`
 - optionally updates ComfyUI on container start with `COMFY_UPDATE_ON_START=1`
+
+It is intentionally minimal: it does not install or start JupyterLab. Only
+ComfyUI is exposed.
 
 Build:
 
@@ -20,7 +23,7 @@ docker build -f docker/Dockerfile -t YOUR_REGISTRY/runpod-comfy-agent:latest .
 The default build args are:
 
 ```text
-CUDA_IMAGE=nvidia/cuda:13.0.0-devel-ubuntu22.04
+CUDA_IMAGE=nvidia/cuda:13.0.0-cudnn-runtime-ubuntu22.04
 TORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
 ```
 
@@ -33,7 +36,7 @@ If NVIDIA changes image tag availability, override the base image:
 ```bash
 docker build \
   -f docker/Dockerfile \
-  --build-arg CUDA_IMAGE=nvidia/cuda:13.0.0-devel-ubuntu22.04 \
+  --build-arg CUDA_IMAGE=nvidia/cuda:13.0.0-cudnn-runtime-ubuntu22.04 \
   --build-arg TORCH_INDEX_URL=https://download.pytorch.org/whl/cu130 \
   -t YOUR_REGISTRY/runpod-comfy-agent:latest .
 ```
@@ -43,7 +46,7 @@ CUDA 12.8 fallback build:
 ```bash
 docker build \
   -f docker/Dockerfile \
-  --build-arg CUDA_IMAGE=nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04 \
+  --build-arg CUDA_IMAGE=nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04 \
   --build-arg TORCH_INDEX_URL=https://download.pytorch.org/whl/cu128 \
   -t YOUR_REGISTRY/runpod-comfy-agent:cu128 .
 ```
