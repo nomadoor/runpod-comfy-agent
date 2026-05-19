@@ -32,10 +32,17 @@ models/text_encoders/
 models/vae/
 ```
 
-Do not put API keys directly in `config/profiles.json`. Use environment variables:
+Do not put API keys directly in `config/profiles.json`. Use an environment
+variable:
 
 ```bash
 export RUNPOD_API_KEY=...
+```
+
+The CLIs also read a git-ignored repo-local `.env` file:
+
+```bash
+RUNPOD_API_KEY=...
 ```
 
 `config/profiles.json`, `.env*`, and `sessions/` are ignored by git.

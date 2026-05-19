@@ -19,6 +19,7 @@ CONFIG_PATH = ROOT / "config" / "profiles.json"
 SESSIONS_ROOT = ROOT / "sessions"
 CURRENT_SESSION_PATH = SESSIONS_ROOT / "current.json"
 RUNPOD_REST_BASE = "https://rest.runpod.io/v1"
+ENV_PATH = ROOT / ".env"
 
 
 class RunPodError(RuntimeError):
@@ -57,10 +58,27 @@ def load_profiles(path: Path = CONFIG_PATH) -> dict[str, Any]:
     return profiles
 
 
+def load_dotenv_value(name: str, path: Path = ENV_PATH) -> str:
+    if not path.exists():
+        return ""
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key.strip() != name:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        return value.strip()
+    return ""
+
+
 def get_api_key() -> str:
-    api_key = os.environ.get("RUNPOD_API_KEY", "").strip()
+    api_key = os.environ.get("RUNPOD_API_KEY", "").strip() or load_dotenv_value("RUNPOD_API_KEY")
     if not api_key:
-        raise RunPodError("RUNPOD_API_KEY is required")
+        raise RunPodError("RUNPOD_API_KEY is required in the environment or .env")
     return api_key
 
 
