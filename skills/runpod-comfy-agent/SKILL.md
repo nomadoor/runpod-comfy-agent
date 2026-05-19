@@ -18,9 +18,12 @@
 ```bash
 python3 bin/start_session.py --profile l4 --workflow-json workflows/<workflow_api_json>
 python3 bin/run_workflow.py --spec runspecs/<run_spec_json>
+python3 bin/run_batch.py --jobs jobs.jsonl
 python3 bin/end_session.py --yes
 python3 bin/reap_sessions.py --include-orphans
 ```
+
+複数jobを実行する場合は `run_batch.py` を使う。最初のbatchは1 Pod上で逐次実行する。`manifest.jsonl` の最新statusが `done` のjobは再実行時にskipされ、`failed` のjobは再実行対象になる。
 
 `run_workflow.py` がHTTP 400で失敗し、ComfyUIのnode errorに `value_not_in_list` が出る場合は、モデル未配置またはモデル名不一致の可能性が高い。workflowのモデル名を差し替えず、`start_session.py --workflow-json ...` のモデル待機が完了しているかを確認する。
 
@@ -32,6 +35,7 @@ python3 bin/reap_sessions.py --include-orphans
 - runごとの画像: `sessions/<session_id>/runs/<run_id>/images/`
 - 再現・デバッグ用ファイル: `sessions/<session_id>/runs/<run_id>/artifacts/`
 - runごとの時間ログ: `sessions/<session_id>/runs/<run_id>/artifacts/timing.json`
+- batch manifest: `sessions/<session_id>/batches/<batch_id>/manifest.jsonl`
 
 ## 最終応答前の確認
 
