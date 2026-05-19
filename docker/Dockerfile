@@ -2,6 +2,8 @@ ARG CUDA_IMAGE=nvidia/cuda:13.0.0-devel-ubuntu22.04
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
 FROM ${CUDA_IMAGE}
 
+ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
+
 ENV DEBIAN_FRONTEND=noninteractive \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
