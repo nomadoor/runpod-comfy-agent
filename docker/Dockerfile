@@ -1,4 +1,4 @@
-ARG CUDA_IMAGE=nvidia/cuda:13.0.0-devel-ubuntu22.04
+ARG CUDA_IMAGE=nvidia/cuda:13.0.0-cudnn-runtime-ubuntu22.04
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
 FROM ${CUDA_IMAGE}
 
