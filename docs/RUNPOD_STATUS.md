@@ -1,60 +1,55 @@
-# RunPod ComfyUI Status
+# RunPod ComfyUI 検証状況
 
-Last updated: 2026-05-19
+最終更新: 2026-05-19
 
-## Verified
+## 検証済み
 
-- RunPod API key can be read from a git-ignored local `.env`.
-- Docker Hub image can be pulled by RunPod:
+- `.env` から `RUNPOD_API_KEY` を読める。
+- Docker Hub imageをRunPodからpullできる。
   - `nomadoor/runpod-comfy-agent:latest`
   - digest: `sha256:4a5fee7d27e585a6168ed9c851c24e18eef92fd7c170daefa70c16647bd94c87`
-- The image uses CUDA 13.0 runtime + PyTorch `cu130` + latest ComfyUI at build time.
-- Smoke test Pod created successfully through `bin/start_session.py`.
-- ComfyUI API responded through RunPod proxy at `/system_stats`.
-- Smoke test Pod was terminated through `bin/end_session.py`.
-- `bin/reap_sessions.py --include-orphans` reported no leftover Pods.
+- imageはCUDA 13.0 runtime + PyTorch `cu130` + ComfyUI。
+- `bin/start_session.py` でPodを作成できる。
+- ComfyUI APIへRunPod proxy経由でアクセスできる。
+- workflow JSONから必要モデルを抽出できる。
+- Z-Image workflowで複数枚生成できる。
+- 2つのPodを同時に起動し、それぞれで生成できる。
+- `bin/end_session.py` でPodをterminateできる。
+- `bin/reap_sessions.py --include-orphans` で残留Podを確認できる。
+- セッション画像は `sessions/<session_id>/images/` にまとまる。
 
-## Smoke Test Result
+## 代表的な確認結果
 
 ```text
-session_id: comfy-20260519-080737
-pod_id: uhl71jjj3f937u
-status: active -> closed
-gpu: NVIDIA L4
-cost/hour: 0.39
 ComfyUI: 0.21.1
 PyTorch: 2.12.0+cu130
-VRAM: about 23.7GB
+GPU: NVIDIA L4
+VRAM: 約23.7GB
+cost/hour: 0.39
 ```
 
-This smoke test intentionally skipped model downloads. It only verified Pod
-creation, image pull, ComfyUI startup, proxy access, terminate, and reaper.
-
-## Current CLI Entry Points
+## CLI
 
 ```bash
-python3 bin/start_session.py --profile cheap_24gb
-python3 bin/run_workflow.py --spec runspecs/<spec>.json
+python3 bin/start_session.py --profile cheap_24gb --workflow-json workflows/Z-Image-Turbo.json
+python3 bin/run_workflow.py --spec runspecs/z-image-turbo.example.json
 python3 bin/session_status.py
 python3 bin/end_session.py --yes
 python3 bin/reap_sessions.py --include-orphans
 ```
 
-## Current Required Local Files
+## ローカルで必要なファイル
 
 - `.env`
-  - contains `RUNPOD_API_KEY`
-  - git-ignored
+  - `RUNPOD_API_KEY` を入れる
+  - git管理しない
 - `config/profiles.json`
-  - contains real local runtime settings
-  - git-ignored
+  - 実運用のprofile設定
+  - git管理しない
 
-## Next Required Work
+## 残っている改善候補
 
-1. Replace model URL placeholders in `config/profiles.json` or workflow
-   requirements JSON.
-2. Run one real workflow with model downloads enabled.
-3. Confirm output image download through `bin/run_workflow.py`.
-4. Optionally split GPU profiles into explicit names such as `l4`, `rtx4090`,
-   `l40s`, and `a100_80gb`.
+- Pod内のモデルDLログをCLIから取得する機能。
+- workflow/model registryの拡充。
+- GPU候補profileの整理。
 

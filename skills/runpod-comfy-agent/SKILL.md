@@ -1,21 +1,18 @@
 # RunPod Comfy Agent
 
-Use this skill when operating RunPod-hosted ComfyUI through this repository's
-local CLI tools.
+このSkillは、このリポジトリのCLIを使ってRunPod上のComfyUIを操作するときに使う。
 
-## Core Rules
+## 最重要ルール
 
-- Use the project CLIs. Do not call the RunPod API directly.
-- Read the workflow API JSON before starting a Pod.
-- Start sessions with `bin/start_session.py --workflow-json <workflow.json>` so
-  model requirements are inferred from loader nodes.
-- If a workflow model is not registered, stop and ask before creating a Pod.
-- Do not swap model files or quantization variants unless the user explicitly
-  approves it.
-- Do not overwrite source workflow files.
-- Do not choose high-cost GPUs without explicit user approval.
+- RunPod APIを直接叩かない。必ずこのリポジトリのCLIを使う。
+- Podを作る前にworkflow API JSONを読む。
+- `bin/start_session.py --workflow-json <workflow.json>` を使い、Loaderノードから必要モデルを推論する。
+- 未登録モデルが出たら、Podを作る前に止めてユーザーに聞く。
+- workflowに書かれているモデルを、勝手に別quantや軽量版へ差し替えない。
+- 元のworkflowファイルを上書きしない。
+- 高額GPUを勝手に選ばない。
 
-## Standard Flow
+## 標準フロー
 
 ```bash
 python3 bin/start_session.py --profile cheap_24gb --workflow-json workflows/Z-Image-Turbo.json
@@ -24,23 +21,21 @@ python3 bin/end_session.py --yes
 python3 bin/reap_sessions.py --include-orphans
 ```
 
-If the user explicitly says not to terminate, leave the Pod running and report
-the session id, Pod id, URL, cost/hour, and current elapsed time.
+ユーザーが明示的に「terminateするな」と言った場合だけ、Podを残す。その場合は、session id、Pod id、URL、cost/hour、経過時間を報告する。
 
-## Outputs
+## 出力を見る場所
 
-- Human-facing gallery: `sessions/<session_id>/images/`
-- Per-run images: `sessions/<session_id>/runs/<run_id>/images/`
-- Replay/debug artifacts: `sessions/<session_id>/runs/<run_id>/artifacts/`
-- Per-run timing: `sessions/<session_id>/runs/<run_id>/artifacts/timing.json`
+- セッション全体の画像一覧: `sessions/<session_id>/images/`
+- runごとの画像: `sessions/<session_id>/runs/<run_id>/images/`
+- 再現・デバッグ用ファイル: `sessions/<session_id>/runs/<run_id>/artifacts/`
+- runごとの時間ログ: `sessions/<session_id>/runs/<run_id>/artifacts/timing.json`
 
-## Before Final Response
+## 最終応答前の確認
 
-- Confirm Pod status.
-- Terminate and run the reaper unless the user explicitly told you not to.
-- Report image locations, session id, cost/hour, elapsed time, and termination
-  status.
-- If something failed, report whether any Pod is still running.
+- Pod状態を確認する。
+- ユーザーが止めるなと言っていない限り、`end_session.py --yes` と `reap_sessions.py --include-orphans` を実行する。
+- 生成画像の場所、session id、cost/hour、経過時間、terminate結果を報告する。
+- 失敗した場合は、Podがまだ動いているかを必ず報告する。
 
-For detailed project rules, read `docs/RUNPOD_COMFYUI_RULES.md`.
+詳細ルールは `docs/RUNPOD_COMFYUI_RULES.md` を読む。
 

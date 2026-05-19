@@ -1,49 +1,39 @@
 # Run Spec
 
-`run_workflow.py` reads a JSON run spec, applies it to a ComfyUI workflow API JSON,
-and saves the exact workflow used for the run.
+`run_workflow.py` はrun spec JSONを読み、ComfyUI workflow API JSONにパッチを当てて実行します。
 
-Basic usage:
+元のworkflowテンプレートは上書きしません。実行に使ったworkflowはrunごとの `artifacts/workflow_used.json` に保存します。
 
-```bash
-python bin/run_workflow.py --spec runspecs/z-image-turbo.example.json
-```
-
-If `start_session.py` has created `sessions/current.json`, `run_workflow.py` uses
-that session's `comfyui_url` and stores runs under
-`sessions/<session_id>/runs/`.
-
-You can still override the URL:
+## 基本
 
 ```bash
-COMFYUI_URL=https://xxxxx-8188.proxy.runpod.net \
-python bin/run_workflow.py --spec runspecs/z-image-turbo.example.json
+python3 bin/run_workflow.py --spec runspecs/z-image-turbo.example.json
 ```
 
-Image-to-image usage:
+`sessions/current.json` がある場合、`run_workflow.py` は現在のsessionの `comfyui_url` を使い、結果を `sessions/<session_id>/runs/` に保存します。
+
+URLを明示することもできます。
 
 ```bash
-python bin/run_workflow.py --spec runspecs/flux-style.example.json
+python3 bin/run_workflow.py \
+  --spec runspecs/z-image-turbo.example.json \
+  --comfy-url https://xxxxx-8188.proxy.runpod.net
 ```
 
-Dry run:
+## 主なフィールド
 
-```bash
-python bin/run_workflow.py --spec runspecs/flux-style.example.json --dry-run
-```
+- `name`: runディレクトリ名のprefix。
+- `workflow_json`: workflow API JSONへのパス。必須。
+- `comfy_url`: ComfyUI URL。`--comfy-url` や `COMFYUI_URL` でも指定できる。
+- `runs_root`: 出力先root。省略時はsession配下、または `sessions/manual-runs`。
+- `inputs.images`: 実行前にアップロードする入力画像。
+- `patches`: workflow JSON内の既存ノード入力の変更。
+- `timeout_seconds`: history pollingのtimeout。
+- `poll_interval_seconds`: history polling間隔。
 
-## Fields
+## patch例
 
-- `name`: Optional run directory prefix.
-- `workflow_json`: Required path to the workflow API JSON template.
-- `comfy_url`: Optional ComfyUI URL. `--comfy-url` or `COMFYUI_URL` can also be used.
-- `runs_root`: Optional output root. Defaults to `sessions/manual-runs`.
-- `inputs.images`: Optional images to upload before prompt submission.
-- `patches`: Optional node input edits.
-- `timeout_seconds`: Optional polling timeout.
-- `poll_interval_seconds`: Optional history polling interval.
-
-Patch by node input:
+ノード入力を直接変更する。
 
 ```json
 {
@@ -53,7 +43,7 @@ Patch by node input:
 }
 ```
 
-Patch by JSON path:
+JSON pathで変更する。
 
 ```json
 {
@@ -62,10 +52,12 @@ Patch by JSON path:
 }
 ```
 
-The original workflow template is never overwritten. Each run writes:
+## 保存構造
+
+各runは以下の形で保存されます。
 
 ```text
-sessions/manual-runs/<run_id>/
+sessions/<session_id>/runs/<run_id>/
   README.md
   images/
   inputs/
@@ -77,13 +69,11 @@ sessions/manual-runs/<run_id>/
     timing.json
 ```
 
-`images/` is the human-facing output folder. `artifacts/` is for exact replay,
-debugging, ComfyUI history, and timing logs.
+人間が見る画像は `images/` にあります。再現・デバッグ用のJSONは `artifacts/` にあります。
 
-When a run is saved under a session, downloaded images are also copied to:
+session配下で実行した場合、画像はセッション全体のギャラリーにもコピーされます。
 
 ```text
 sessions/<session_id>/images/
 ```
 
-That folder is the human-facing gallery for the whole session.

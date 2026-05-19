@@ -1,9 +1,16 @@
 # RunPod Comfy Agent
 
-Local CLI tools for starting a RunPod Pod, running ComfyUI workflows, collecting
-images, and terminating the Pod safely.
+RunPod上のComfyUIを、ローカルPC / VSCode / AIエージェントから操作するためのCLI群です。
 
-## Main Flow
+目的はシンプルです。
+
+- RunPod Podを作る
+- workflow API JSONを読んで必要モデルを判断する
+- ComfyUIへworkflowを投げる
+- 生成画像をローカルへ回収する
+- 作業後にPodをterminateする
+
+## 基本フロー
 
 ```bash
 python3 bin/start_session.py --profile cheap_24gb --workflow-json workflows/Z-Image-Turbo.json
@@ -12,20 +19,21 @@ python3 bin/end_session.py --yes
 python3 bin/reap_sessions.py --include-orphans
 ```
 
-Human-facing images are collected in:
+人間が見る画像はここにまとまります。
 
 ```text
 sessions/<session_id>/images/
 ```
 
-Detailed replay artifacts are kept under each run's `artifacts/` directory.
+各runの再現用JSON、ComfyUI履歴、時間ログは `runs/<run_id>/artifacts/` に保存されます。
 
-## Docs
+## ドキュメント
 
-- [Setup](docs/RUNPOD_SETUP.md)
-- [Rules](docs/RUNPOD_COMFYUI_RULES.md)
-- [Run Spec](docs/RUN_SPEC.md)
-- [Current Status](docs/RUNPOD_STATUS.md)
-- [Architecture Review](docs/ARCHITECTURE_REVIEW.md)
-- [Git Notes](docs/GIT_USAGE.md)
+- [セットアップ](docs/RUNPOD_SETUP.md)
+- [運用ルール](docs/RUNPOD_COMFYUI_RULES.md)
+- [run spec](docs/RUN_SPEC.md)
+- [検証状況](docs/RUNPOD_STATUS.md)
+- [設計レビュー用メモ](docs/ARCHITECTURE_REVIEW.md)
+
+AIエージェント向けの短い運用ルールは [skills/runpod-comfy-agent/SKILL.md](skills/runpod-comfy-agent/SKILL.md) にあります。
 

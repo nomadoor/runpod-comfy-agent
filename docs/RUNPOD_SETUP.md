@@ -1,229 +1,136 @@
-# RunPod Session Setup
+# RunPod セットアップ
 
-This project keeps RunPod infrastructure actions behind local CLIs:
+RunPodのPod操作は、すべてこのリポジトリのCLI越しに行います。
 
 ```bash
-python bin/start_session.py --profile cheap_24gb
-python bin/run_workflow.py --spec runspecs/z-image-turbo.example.json
-python bin/session_status.py --watch 10
-python bin/end_session.py --yes
-python bin/reap_sessions.py --include-orphans --yes
+python3 bin/start_session.py --profile cheap_24gb --workflow-json workflows/Z-Image-Turbo.json
+python3 bin/run_workflow.py --spec runspecs/z-image-turbo.example.json
+python3 bin/session_status.py --watch 10
+python3 bin/end_session.py --yes
+python3 bin/reap_sessions.py --include-orphans
 ```
 
-Reusable code lives under `comfy_agent/`. CLI entrypoints live under `bin/`; new
-library-style code should go into the package rather than being added to the
-entrypoints. The repo root is kept mostly to Markdown documents and top-level
-directories.
+共通処理は `comfy_agent/`、CLIは `bin/` にあります。
 
-## Configuration
+## 設定
 
-Copy the example profile and edit it by hand:
+profileを作ります。
 
 ```bash
 cp config/profiles.example.json config/profiles.json
 ```
 
-Set the model download URLs in `bootstrap.models`. The profile example uses these
-ComfyUI paths:
+`config/profiles.json` はgit管理しません。実際のimage名、GPU候補、diskサイズなどはここで調整します。
 
-```text
-models/diffusion_models/
-models/text_encoders/
-models/vae/
-```
-
-Do not put API keys directly in `config/profiles.json`. Use an environment
-variable:
-
-```bash
-export RUNPOD_API_KEY=...
-```
-
-The CLIs also read a git-ignored repo-local `.env` file:
+RunPod API keyは `config/profiles.json` には書きません。環境変数か `.env` を使います。
 
 ```bash
 RUNPOD_API_KEY=...
 ```
 
-`config/profiles.json`, `.env*`, and `sessions/` are ignored by git.
+`.env` もgit管理しません。
 
-Also set either:
+## Docker image
 
-```json
-{
-  "pod": {
-    "imageName": "YOUR_REGISTRY/runpod-comfy-agent:latest"
-  }
-}
-```
-
-If the image is in a private registry, create a RunPod container registry auth
-entry and set its ID in the profile:
-
-```json
-{
-  "pod": {
-    "containerRegistryAuthId": "your-registry-auth-id"
-  }
-}
-```
-
-For the first real test, a public image is simpler.
-
-or:
-
-```json
-{
-  "pod": {
-    "templateId": "your-template-id"
-  }
-}
-```
-
-The repo includes a Docker image definition under `docker/`:
+このリポジトリのDocker imageはComfyUI専用です。JupyterLabは入れません。
 
 ```bash
-docker build -f docker/Dockerfile -t YOUR_REGISTRY/runpod-comfy-agent:latest .
-docker push YOUR_REGISTRY/runpod-comfy-agent:latest
+docker build -f docker/Dockerfile -t nomadoor/runpod-comfy-agent:latest .
+docker push nomadoor/runpod-comfy-agent:latest
 ```
 
-That image installs CUDA PyTorch and ComfyUI, then the session bootstrap downloads
-models on each Pod start.
+現在の標準image:
 
-For large model downloads, set `bootstrap.background_model_downloads: true` so
-ComfyUI starts first and model downloads continue in the background. The default
-background log path is `/workspace/comfy-agent-model-download.log`.
-
-The default image is CUDA 13.0 / PyTorch `cu130`. If the chosen RunPod host
-driver does not support that combination, build and use the documented CUDA 12.8
-fallback tag instead.
-
-## Start A Session
-
-```bash
-python bin/start_session.py --profile cheap_24gb
+```text
+nomadoor/runpod-comfy-agent:latest
+CUDA 13.0 runtime
+PyTorch cu130
+ComfyUI
 ```
 
-If a workflow needs extra custom nodes or models, declare them in a requirements
-JSON and pass it at session start:
+モデルはimageに焼き込みません。Pod起動後にworkflowから必要モデルを判断してダウンロードします。
 
-```bash
-python bin/start_session.py \
-  --profile cheap_24gb \
-  --workflow-requirements workflows/requirements.example.json
+大きいモデルDL中でもComfyUIを先に開くため、`bootstrap.background_model_downloads` は `true` を基本にします。
+
+Pod内のモデルDLログ:
+
+```text
+/workspace/comfy-agent-model-download.log
 ```
 
-Multiple `--workflow-requirements` flags can be passed. They are merged into the
-profile's `bootstrap.custom_nodes`, `bootstrap.models`, and
-`bootstrap.extra_commands` for that session only.
+## セッション開始
 
-For workflow API JSON files that use standard loader nodes, prefer passing the
-workflow itself. The CLI inspects loader inputs such as `UNETLoader.unet_name`,
-`CLIPLoader.clip_name`, and `VAELoader.vae_name`, then adds known model URLs
-before the Pod is created:
+通常はworkflow API JSONを渡します。
 
 ```bash
-python bin/start_session.py \
+python3 bin/start_session.py \
   --profile cheap_24gb \
   --workflow-json workflows/Z-Image-Turbo.json
 ```
 
-If a model name is not registered, the CLI stops before creating a Pod. Do not
-swap model files just because a smaller quantized variant exists; update the
-workflow JSON intentionally or ask first.
+CLIは以下の標準Loaderノードを見て、必要モデルを推論します。
 
-`start_session.py` will:
+- `UNETLoader.unet_name`
+- `CLIPLoader.clip_name`
+- `VAELoader.vae_name`
 
-- create one RunPod Pod for the session
-- include `comfy-session-<session_id>` in the Pod name
-- expose `8188/http`
-- optionally run the bootstrap script from the profile
-- wait for `https://<pod_id>-8188.proxy.runpod.net/system_stats`
-- write `sessions/<session_id>/session.json`
-- write `sessions/current.json`
+未登録モデルが見つかった場合は、Podを作る前に止まります。workflowに書かれていない軽量版や別quantへ勝手に差し替えてはいけません。
 
-The example profile defaults to `max_runtime_minutes: 120`. This is stored in
-`session.json` and enforced by `reap_sessions.py`; it is not a RunPod-side timer
-by itself.
-
-The health check uses `curl`, not Python `urllib`, because RunPod's HTTP proxy
-returned `403 / 1010` to `urllib` during manual testing while `curl` worked.
-
-Use `--dry-run` to inspect the create payload before renting a Pod:
+payloadだけ確認する場合:
 
 ```bash
-python bin/start_session.py --profile cheap_24gb --dry-run
+python3 bin/start_session.py \
+  --profile cheap_24gb \
+  --workflow-json workflows/Z-Image-Turbo.json \
+  --dry-run
 ```
 
-## End A Session
+## workflow実行
 
 ```bash
-python bin/end_session.py --yes
+python3 bin/run_workflow.py --spec runspecs/z-image-turbo.example.json
 ```
 
-This reads the current session and deletes the Pod through RunPod.
+画像はセッション直下にも集約されます。
 
-## Monitor A Session
+```text
+sessions/<session_id>/images/
+```
+
+再現・デバッグ用のJSONはrunごとの `artifacts/` に保存されます。
+
+## 状態確認
 
 ```bash
-python bin/session_status.py
-python bin/session_status.py --watch 10
-python bin/session_status.py --json
+python3 bin/session_status.py
+python3 bin/session_status.py --watch 10
+python3 bin/session_status.py --json
 ```
 
-This uses the RunPod REST API to read the current Pod details and
-`/billing/pods` history for the session Pod. It reports:
+表示するもの:
 
-- Pod/session status
-- GPU and hourly cost when returned by RunPod
-- elapsed runtime
-- estimated active cost from elapsed time and hourly cost
-- billing records returned by RunPod for the session period
+- session / Pod状態
+- cost/hour
+- 経過時間
+- 概算コスト
+- RunPod billing APIが返す課金記録
 
-If `/billing/pods` fails or is unavailable, the command still prints Pod status
-and estimated cost from Pod details when possible.
+RunPodの現在クレジット残高はCLI未対応です。必要ならRunPodのBilling画面で確認します。
 
-Current account credit balance is documented in the RunPod Billing console, but
-there is no dedicated balance endpoint wired here yet.
-
-Pod logs are documented by RunPod as Console UI logs: container logs and system
-logs. The REST API docs currently expose billing and Pod management endpoints,
-but this project does not yet have a documented Pod logs API to call. The
-container image prints startup checks to stdout so they are visible in RunPod's
-Pod Logs panel.
-
-## Reap Leaked Pods
+## 終了
 
 ```bash
-python bin/reap_sessions.py --include-orphans --yes
+python3 bin/end_session.py --yes
+python3 bin/reap_sessions.py --include-orphans
 ```
 
-Without `--yes`, it only prints what it would terminate.
+`end_session.py` は現在session、または `--session-id` で指定したsessionのPodをterminateします。
 
-Run this after work sessions, and also whenever you suspect a local script exited
-before calling `end_session.py`.
+`reap_sessions.py` はローカル記録だけでなくRunPod側のPod一覧も見て、削除漏れを検出します。
 
-## Bootstrap Strategy
+## 注意点
 
-The first implementation prepares the Pod through `dockerStartCmd`, because it is
-available at Pod creation time. The script can:
+- `max_runtime_minutes` はローカルポリシーです。RunPod側の自動停止タイマーではありません。
+- workflowごとにPodを作らず、作業セッションごとに1 Podを使います。
+- 使い終わったら必ずterminateします。ユーザーが明示的に止めるなと言った場合だけ残します。
 
-- clone ComfyUI if it is not already present
-- install `requirements.txt`
-- clone optional custom node repos listed in the profile or workflow requirements
-- download model files into the configured ComfyUI model paths
-- start ComfyUI on port `8188`
-
-This is intentionally simple. If the chosen RunPod template already has its own
-startup logic, either disable `bootstrap.enabled` or move that logic into
-`bootstrap.extra_commands`.
-
-Model downloads can easily dominate startup time. Set `health_timeout_seconds`
-large enough for the total model size and network speed, or prefer a RunPod
-network volume / prebuilt image once the model set stabilizes.
-
-If the model list grows, watch the generated `dockerStartCmd` size with:
-
-```bash
-python bin/start_session.py --profile cheap_24gb --dry-run
-```
